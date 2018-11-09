@@ -28,18 +28,18 @@ const api = axios.create({
 
 axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_KEY, 'utf8').trim();
 
-const loadBalancerID = 'db39795b-b4d8-4f4d-8722-509b89f4eae1';
-const loadBalanceThreshold = 100;
 const minimumDroplets = 2;
 
+const TIME_TIL_CLEARED = 60000 * 60 * 3;
+
 let init = false;
-let draining = false;
 let initializing = false;
 let initialized = true;
 let clearInitialization = false;
 let availableDroplets = [];
-let totalListeners = 0;
 let serverPromises = [];
+let flushing = [];
+let currentTranscoder = null;
 
 function checkNewDroplet(droplet) {
   initializing = false;
@@ -55,14 +55,14 @@ function checkNewDroplet(droplet) {
       if (found.networks.v4.length > 0) {
         const ip = found.networks.v4[0].ip_address;
         console.log('GOT DROPLET IP', ip);
-        request(`http://${ ip }:1337/status-json.xsl`, { json: true }, (err, response, body) => {
+        request(`http://${ ip }:8080/health`, { json: true }, (err, response, body) => {
           if (body) {
             initialized = true;
             initializing = droplet.id;
+            currentTranscoder = droplet.id;
             clearInitialization = setTimeout(() => {
               initializing = false;
             }, 60000 * 5);
-            updateLoadBalancers();
             console.log('CLEARING CHECKER');
             clearInterval(initializationChecker);
           }
@@ -76,6 +76,7 @@ function checkNewDroplet(droplet) {
       api.delete(`v2/droplets/${ droplet.id }`)
       .then((res) => console.log(`DESTROYED DEAD DROPLET ${ droplet.id }`))
       clearInterval(initializationChecker);
+      initialized = true;
     }
   }, 60000 * 2)
 }
@@ -84,19 +85,19 @@ function createDroplet() {
   api
   .post('v2/droplets',
     { 
-      name: 'icecast-slave',
+      name: 'transcoder',
       region: 'nyc1',
       size: 's-1vcpu-1gb',
       image: '38819457',
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      user_data: '/etc/init.d/icecast2 start',
+      user_data: '/opt/liquidsoap /opt/transcoder.liq\nforever start /opt/transcoder-health-checker/index.js',
       private_networking: null,
       volumes: null,
       monitoring: false,
       volumes: null,
-      tags: ['icecast']
+      tags: ['liquidsoap']
     }
   )
   .then((res) => checkNewDroplet(res.data.droplet))
@@ -105,76 +106,34 @@ function createDroplet() {
 
 function deleteDroplet(droplet) {
   api.delete(`v2/droplets/${ droplet }`)
-  .then((res) => { console.log('DROPLET DELETED', droplet ); updateLoadBalancers(); })
-  .catch(err => {});
-}
-
-function updateLoadBalancers(remove) {
-  const dropletIDs = []
-  availableDroplets.forEach((droplet) => {
-    dropletIDs.push(droplet.id);
-  });
-
-  if (remove) {
-    draining = dropletIDs[dropletIDs.length - 1].id;
-    dropletIDs.pop();
-  }
-  
-  console.log('DROPLET IDS', dropletIDs);
-
-  api.put(`v2/load_balancers/${ loadBalancerID }`, {
-    name: 'icecast-load-balancer',
-    region: 'nyc1',
-    algorithm: 'least_connections',
-    forwarding_rules: [
-      {
-        entry_protocol: 'http',
-        entry_port: 80,
-        target_protocol: 'http',
-        target_port: 1337
-      }
-    ],
-    health_check: {
-      protocol: 'tcp',
-      port: 1337,
-      check_interval_seconds: 10,
-      response_timeout_seconds: 5,
-      healthy_threshold: 5,
-      unhealthy_threshold: 3
-    },
-    sticky_sessions: {},
-    droplet_ids: dropletIDs
-  }).then(res => { console.log('UPDATED LOAD BALANCER') })
+  .then((res) => { console.log('DROPLET DELETED', droplet ); })
   .catch(err => {});
 }
 
 // api.get('v2/load_balancers', (res) => console.log(res));
-logger.info(`INITIALIZING SCALER WITH, ${ minimumDroplets } MINIMUM DROPLETS`);
+logger.info(`INITIALIZING TRANSCODER ROTATOR WITH, ${ minimumDroplets } MINIMUM DROPLETS`);
 
 // Load monitor
 setInterval(() => {
-    api.get('v2/droplets?tag_name=icecast')
+    api.get('v2/droplets?tag_name=liquidsoap')
     .then(res => {
-      totalListeners = 0;
-
       if (res.data) {
         availableDroplets = res.data.droplets;
 
         // Run check one at a time, and while not initializing new droplet
         if (serverPromises.length === 0 && initialized) {
           if (!init) {
-            updateLoadBalancers();
             init = true;
           }
 
-          // Gather listening stats across all droplets
+          // Gather health of all droplets
           for (let i = 0; i < availableDroplets.length; i++) {
             // console.log('available loop', availableDroplets[i].networks.v4);
             if (availableDroplets[i].networks.v4[0]) {
               const ip = availableDroplets[i].networks.v4[0].ip_address;
               serverPromises.push(
                 new Promise((resolve, reject) => {
-                  request(`http://${ ip }:1337/status-json.xsl`, { json: true }, (err, response, body) => {
+                  request(`http://${ ip }:8080/health`, { json: true }, (err, response, body) => {
                     if (body) {
                       body.droplet = availableDroplets[i].id;
                       console.log('AVAILABLE', i, availableDroplets[i].id);
@@ -188,52 +147,56 @@ setInterval(() => {
             }
           }
 
-          // Count total / average listeners across all droplets
           Promise.all(serverPromises).then((values) => {
             // Check to ensure not to kill newly created droplet
-            const isInitialized = _.find(values, droplet => droplet.droplet === initializing);
+            const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
             let deleting = false;
             if (values) {
+              const unhealthy = [];
+              const healthy = [];
               for (let i = 0; i < values.length; i++) {
-                if (values[i] && values[i].icestats) {
-                  if (values[i].icestats.source) {
-                    let sources = values[i].icestats.source;
-                    if (!Array.isArray(values[i].icestats.source)) {
-                      sources = [sources];
-                    }
-
-                    let dropletListeners = 0;
-                    for (let j = 0; j < sources.length; j++) {
-                      dropletListeners += sources[j].listeners;
-                      totalListeners += sources[j].listeners;
-                    }
-
-                    console.log('droplet listeners', values[i].droplet, dropletListeners);
-                    if (dropletListeners === 0 && values.length > minimumDroplets && !isInitialized && !deleting) {
-                      logger.info(`DELETING, ${ dropletListeners }, ${ values.length }, ${ minimumDroplets }, ${ isInitialized }`);
-                      deleteDroplet(values[i].droplet);
-                      deleting = true;
-                    }
+                if (values[i] && values[i].usage) {
+                  if (values[i].usage > 0.8) {
+                    unhealty.push(values[i]);
+                  } else if (values[i].usage < 0.8) {
+                    healthy.push(values[i]);
                   }
                 }
               }
-            }
 
-            const averageListeners = totalListeners / values.length;
-            const addInitializing = initializing ? 1 : 0
-            if ((!isNaN(averageListeners) && averageListeners > loadBalanceThreshold) || (availableDroplets.length) < minimumDroplets) {
-              logger.info(`CREATING, ${ averageListeners }, ${ loadBalanceThreshold }, ${ availableDroplets.length }, ${ minimumDroplets }`);
-              if (draining) {
-                draining = false;
-                updateLoadBalancers();
-              } else {
-                createDroplet();
-                console.log('CREATING NEW DROPLET, AVERAGE WAS: ', averageListeners, values.length);
+              // Push new unhealthy droplets to flushing state
+              for (let i = 0; i < unhealty.length; i++) {
+                const exists = _.find(flushing, droplet => unhealty[i].droplet === droplet.droplet);
+                if (!exists) {
+                  flushing.push(unhealty[i].droplet);
+                  setTimeout(() => {
+                    // Reset liquidsoap
+                    // deleteDroplet(unhealty[i].droplet);
+                  }, TIME_TIL_CLEARED);
+                }
               }
-            } else if (((totalListeners < 100) || totalListeners < ((availableDroplets.length * loadBalanceThreshold) - 200)) && availableDroplets.length > minimumDroplets) {
-              // Drain droplet
-              updateLoadBalancers(true);
-              console.log('UPDATING LOAD BALANCER, AVERAGE WAS: ', averageListeners, values.length);
+
+              // If current transcoder becomes unhealthy, select new transcoding droplet
+              const currentIsUnhealthy = _.find(unhealthy, droplet => unhealty[i].droplet === currentTranscoder);
+              if (currentIsUnhealthy) {
+                let newCurrent;
+                for (let i = 0; i < healthy.length; i++) {
+                  const exists = _.find(flushing, droplet => healthy[i].droplet === droplet.droplet);
+                  if (!exists) {
+                    newCurrent = exists.droplet
+                  }
+                }
+
+                if (newCurrent) {
+                  currentTranscoder = newCurrent;
+                } else if (!initializing) {
+                  // If all are unhealty, spin up new transcoder droplet
+                  initializing = true;
+                  createDroplet();
+                }
+              }
+
+              console.log('CURRENT TRANSCODER :', currentTranscoder);
             }
 
             serverPromises = [];
