@@ -4,6 +4,11 @@ const _ = require('lodash');
 const axios = require('axios');
 const request = require('request');
 const winston = require('winston');
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+
 
 const ENV = process.env;
 
@@ -136,6 +141,7 @@ setInterval(() => {
                   request(`http://${ ip }:8080/health`, { json: true }, (err, response, body) => {
                     if (body) {
                       body.droplet = availableDroplets[i].id;
+                      body.ip = availableDroplets[i].ip;
                       console.log('AVAILABLE', i, availableDroplets[i].id);
                       resolve(body);
                     } else {
@@ -156,9 +162,9 @@ setInterval(() => {
               const healthy = [];
               for (let i = 0; i < values.length; i++) {
                 if (values[i] && values[i].usage) {
-                  if (values[i].usage > 0.8) {
+                  if (values[i].usage >= 50) {
                     unhealty.push(values[i]);
-                  } else if (values[i].usage < 0.8) {
+                  } else if (values[i].usage < 50) {
                     healthy.push(values[i]);
                   }
                 }
@@ -168,9 +174,9 @@ setInterval(() => {
               for (let i = 0; i < unhealty.length; i++) {
                 const exists = _.find(flushing, droplet => unhealty[i].droplet === droplet.droplet);
                 if (!exists) {
-                  flushing.push(unhealty[i].droplet);
+                  flushing.push(unhealty[i]);
                   setTimeout(() => {
-                    // Reset liquidsoap
+                    // RESET LIQUIDSOAP
                     // deleteDroplet(unhealty[i].droplet);
                   }, TIME_TIL_CLEARED);
                 }
@@ -183,7 +189,7 @@ setInterval(() => {
                 for (let i = 0; i < healthy.length; i++) {
                   const exists = _.find(flushing, droplet => healthy[i].droplet === droplet.droplet);
                   if (!exists) {
-                    newCurrent = exists.droplet
+                    newCurrent = exists;
                   }
                 }
 
@@ -206,3 +212,59 @@ setInterval(() => {
     })
     .catch(err => { console.log('GOT ERROR', err); });
 }, 10000);
+
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+const activeEndpoints = [];
+app.post('/start', (req, res) => {
+  const stream = {
+    droplet: currentTranscoder.droplet.slice(),
+    ip: currentTranscoder.ip.slice(),
+    public: req.body.public,
+    private: req.body.private
+  };
+
+  activeEndpoints.push(stream)
+
+  request({
+    url: `http://${ currentTranscoder.ip }:8080/start`,
+    method: 'POST',
+    json: { stream }
+  }, (err, response, body) => {
+    if (body) {
+      console.log(`STARTING ON ${ currentTranscoder.droplet }`, body);
+      return res.json(body);
+    } else {
+      return res.status(409).json({ error: 'Could not start stream' });
+    }
+  });
+});
+
+app.post('/stop', (req, res) => {
+  const index = activeEndpoints.map((x) => x.public).indexOf(req.body.public);
+  const found = activeEndpoints[index];
+  if (found !== -1) {
+    activeEndpoints.splice(index, 1);
+
+    request({
+      url: `http://${ found.ip }:8080/stop`,
+      method: 'POST',
+      json: { public: req.body.public, private: req.body.private }
+    }, (err, response, body) => {
+      if (body) {
+        console.log(`TRANSCODER ${ public } STOPPED`, body);
+        return res.json(body);
+      } else {
+        return res.status(409).json({ error: 'Could not stop stream' });
+      }
+    });
+  } else {
+    return res.status(409).json({ error: 'Could not find stream' });
+  }
+})
+
+const server = http.createServer(app);
+server.listen(8080);

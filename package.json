@@ -6,14 +6,22 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/illestrater/transcoder-rotator.git"
-  },
+  "repository": "git+https://github.com/illestrater/transcoder-rotator.git",
   "author": "",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/illestrater/transcoder-rotator/issues"
   },
-  "homepage": "https://github.com/illestrater/transcoder-rotator#readme"
+  "homepage": "https://github.com/illestrater/transcoder-rotator#readme",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "body-parser": "^1.18.3",
+    "cors": "^2.8.5",
+    "express": "^4.16.4",
+    "fs": "^0.0.1-security",
+    "http": "^0.0.0",
+    "lodash": "^4.17.11",
+    "request": "^2.88.0",
+    "winston": "^3.1.0"
+  }
 }
