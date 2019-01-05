@@ -163,7 +163,7 @@ setInterval(() => {
               for (let i = 0; i < values.length; i++) {
                 if (values[i] && values[i].usage) {
                   if (values[i].usage >= HEALTH_MEM_THRESHOLD) {
-                    unhealty.push(values[i]);
+                    unhealthy.push(values[i]);
                   } else if (values[i].usage < HEALTH_MEM_THRESHOLD) {
                     healthy.push(values[i]);
                   }
@@ -171,10 +171,10 @@ setInterval(() => {
               }
 
               // Push new unhealthy droplets to flushing state
-              for (let i = 0; i < unhealty.length; i++) {
-                const exists = _.find(flushing, droplet => unhealty[i].droplet === droplet.droplet);
+              for (let i = 0; i < unhealthy.length; i++) {
+                const exists = _.find(flushing, droplet => unhealthy[i].droplet === droplet.droplet);
                 if (!exists) {
-                  flushing.push(unhealty[i]);
+                  flushing.push(unhealthy[i]);
                   setTimeout(() => {
                     // RESET LIQUIDSOAP
                     // deleteDroplet(unhealty[i].droplet);
@@ -183,7 +183,7 @@ setInterval(() => {
               }
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
-              const currentIsUnhealthy = _.find(unhealthy, droplet => unhealty[i].droplet === currentTranscoder);
+              const currentIsUnhealthy = _.find(unhealthy, droplet => unhealthy[i].droplet === currentTranscoder);
               if (currentIsUnhealthy) {
                 let newCurrent;
                 for (let i = 0; i < healthy.length; i++) {
@@ -196,7 +196,7 @@ setInterval(() => {
                 if (newCurrent) {
                   currentTranscoder = newCurrent;
                 } else if (!initializing) {
-                  // If all are unhealty, spin up new transcoder droplet
+                  // If all are unhealthy, spin up new transcoder droplet
                   initializing = true;
                   createDroplet();
                 }
