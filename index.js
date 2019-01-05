@@ -105,8 +105,8 @@ function createDroplet() {
       tags: ['liquidsoap']
     }
   )
-  .then((res) => { console.log(res.data.droplet); checkNewDroplet(res.data.droplet); })
-  .catch((err) => {});
+  .then((res) => { console.log('CREATED!', res.data.droplet); checkNewDroplet(res.data.droplet); })
+  .catch((err) => { console.log('ERROR CREATING DROPLET', err); });
 }
 
 function deleteDroplet(droplet) {
