@@ -93,7 +93,7 @@ function createDroplet() {
       name: 'transcoder',
       region: 'nyc1',
       size: 's-1vcpu-1gb',
-      image: '38819457',
+      image: '42139515',
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
