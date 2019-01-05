@@ -137,7 +137,6 @@ setInterval(() => {
                     if (body) {
                       body.droplet = availableDroplets[i].id;
                       body.ip = ip;
-                      console.log('AVAILABLE', i, availableDroplets[i].id);
                       resolve(body);
                     } else {
                       reject(err);
@@ -198,6 +197,7 @@ setInterval(() => {
                   }
                 }
 
+                console.log('CHECKING STATE', newCurrent, initializing);
                 if (newCurrent) {
                   currentTranscoder = newCurrent;
                 } else if (!initializing) {
