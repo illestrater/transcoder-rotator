@@ -97,7 +97,7 @@ function createDroplet() {
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      user_data: '#!/bin/bash\n/opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\nforever start /opt/transcoder-controls/index.js',
+      user_data: '#!/bin/bash\nforever start /opt/transcoder-controls/index.js',
       private_networking: null,
       monitoring: false,
       volumes: null,
