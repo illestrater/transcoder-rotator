@@ -127,10 +127,6 @@ setInterval(() => {
 
         // Run check one at a time, and while not initializing new droplet
         if (serverPromises.length === 0 && initialized) {
-          if (!init) {
-            init = true;
-          }
-
           // Gather health of all droplets
           for (let i = 0; i < availableDroplets.length; i++) {
             // console.log('available loop', availableDroplets[i].networks.v4);
@@ -154,6 +150,11 @@ setInterval(() => {
           }
 
           Promise.all(serverPromises).then((values) => {
+            if (!init) {
+              currentTranscoder = values[0];
+              init = true;
+            }
+  
             // Check to ensure not to kill newly created droplet
             const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
             let deleting = false;
@@ -184,11 +185,11 @@ setInterval(() => {
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
               const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder);
-              if (!currentTranscoder || currentIsUnhealthy) {
+              if (currentIsUnhealthy) {
                 let newCurrent;
                 console.log('FLUSHING', flushing);
                 for (let i = 0; i < healthy.length; i++) {
-                  const exists = _.find(flushing, droplet => healthy[i].droplet === droplet.droplet);
+                  const exists = _.find(flushing, droplet => droplet.droplet === healthy[i].droplet);
                   console.log('EXISTS', exists);
                   if (!exists) {
                     newCurrent = healthy[i];
