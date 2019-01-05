@@ -186,8 +186,10 @@ setInterval(() => {
               const currentIsUnhealthy = _.find(unhealthy, droplet => unhealthy[i].droplet === currentTranscoder);
               if (!currentTranscoder || currentIsUnhealthy) {
                 let newCurrent;
+                console.log('FLUSHING', flushing);
                 for (let i = 0; i < healthy.length; i++) {
                   const exists = _.find(flushing, droplet => healthy[i].droplet === droplet.droplet);
+                  console.log('EXISTS', exists);
                   if (!exists) {
                     newCurrent = exists;
                   }
