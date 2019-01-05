@@ -156,6 +156,7 @@ setInterval(() => {
             }
   
             // Check to ensure not to kill newly created droplet
+            console.log('DROPLETS', values);
             const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
             let deleting = false;
             if (values) {
