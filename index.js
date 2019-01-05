@@ -97,7 +97,7 @@ function createDroplet() {
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      user_data: '#cloud-config\nruncmd:\n - [/root/.nvm/versions/node/v8.12.0/lib/node_modules/forever/bin/forever, start, /opt/transcoder-controls/index.js]',
+      user_data: '#!/bin/bash\n/opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n/root/.nvm/versions/node/v8.12.0/lib/node_modules/forever/bin/forever start /opt/transcoder-controls/index.js',
       private_networking: null,
       monitoring: false,
       volumes: null,
