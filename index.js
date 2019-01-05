@@ -83,7 +83,7 @@ function checkNewDroplet(droplet) {
       clearInterval(initializationChecker);
       initialized = true;
     }
-  }, 60000 * 2)
+  }, 60000 * 5)
 }
 
 function createDroplet() {
@@ -93,11 +93,11 @@ function createDroplet() {
       name: 'transcoder',
       region: 'nyc1',
       size: 's-1vcpu-1gb',
-      image: '42139866',
+      image: '42140681',
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      user_data: '/opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\nforever start /opt/transcoder-controls/index.js',
+      user_data: '/opt/start.sh',
       private_networking: null,
       volumes: null,
       monitoring: false,
