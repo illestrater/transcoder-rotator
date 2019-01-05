@@ -191,7 +191,7 @@ setInterval(() => {
                   const exists = _.find(flushing, droplet => healthy[i].droplet === droplet.droplet);
                   console.log('EXISTS', exists);
                   if (!exists) {
-                    newCurrent = exists;
+                    newCurrent = healthy[i];
                   }
                 }
 
