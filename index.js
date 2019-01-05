@@ -32,10 +32,10 @@ const api = axios.create({
 
 axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_KEY, 'utf8').trim();
 
-const minimumDroplets = 2;
+const minimumDroplets = 1;
 
 const TIME_TIL_CLEARED = 60000 * 60 * 3;
-const HEALTH_MEM_THRESHOLD = 50;
+const HEALTH_MEM_THRESHOLD = 1.4;
 
 let init = false;
 let initializing = false;
@@ -183,7 +183,7 @@ setInterval(() => {
               }
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
-              const currentIsUnhealthy = _.find(unhealthy, droplet => unhealthy[i].droplet === currentTranscoder);
+              const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder);
               if (!currentTranscoder || currentIsUnhealthy) {
                 let newCurrent;
                 console.log('FLUSHING', flushing);
