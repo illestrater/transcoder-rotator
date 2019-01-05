@@ -141,7 +141,7 @@ setInterval(() => {
                   request(`http://${ ip }:8080/health`, { json: true }, (err, response, body) => {
                     if (body) {
                       body.droplet = availableDroplets[i].id;
-                      body.ip = availableDroplets[i].ip;
+                      body.ip = ip;
                       console.log('AVAILABLE', i, availableDroplets[i].id);
                       resolve(body);
                     } else {
