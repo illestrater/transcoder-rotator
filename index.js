@@ -87,8 +87,8 @@ function checkNewDroplet(droplet) {
 }
 
 function createDroplet() {
-  api
-  .post('v2/droplets',
+  console.log('CREATING DROPLET');
+  api.post('v2/droplets',
     { 
       name: 'transcoder',
       region: 'nyc1',
@@ -105,7 +105,7 @@ function createDroplet() {
       tags: ['liquidsoap']
     }
   )
-  .then((res) => checkNewDroplet(res.data.droplet))
+  .then((res) => { console.log(res.data.droplet); checkNewDroplet(res.data.droplet); })
   .catch((err) => {});
 }
 
@@ -184,7 +184,7 @@ setInterval(() => {
               }
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
-              const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder);
+              const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder.droplet);
               if (currentIsUnhealthy) {
                 let newCurrent;
                 console.log('FLUSHING', flushing);
