@@ -4,11 +4,10 @@ const _ = require('lodash');
 const axios = require('axios');
 const request = require('request');
 const winston = require('winston');
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-
+// const express = require('express');
+// const http = require('http');
+// const cors = require('cors');
+// const bodyParser = require('body-parser');
 
 const ENV = process.env;
 
@@ -36,6 +35,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 const minimumDroplets = 2;
 
 const TIME_TIL_CLEARED = 60000 * 60 * 3;
+const HEALTH_MEM_THRESHOLD = 50;
 
 let init = false;
 let initializing = false;
@@ -97,7 +97,7 @@ function createDroplet() {
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      user_data: '/opt/liquidsoap /opt/transcoder.liq\nforever start /opt/transcoder-health-checker/index.js',
+      user_data: '/opt/transcoder-health-checker/liquidsoap /opt/transcoder-health-checker/transcoder.liq\nforever start /opt/transcoder-health-checker/index.js',
       private_networking: null,
       volumes: null,
       monitoring: false,
@@ -162,9 +162,9 @@ setInterval(() => {
               const healthy = [];
               for (let i = 0; i < values.length; i++) {
                 if (values[i] && values[i].usage) {
-                  if (values[i].usage >= 50) {
+                  if (values[i].usage >= HEALTH_MEM_THRESHOLD) {
                     unhealty.push(values[i]);
-                  } else if (values[i].usage < 50) {
+                  } else if (values[i].usage < HEALTH_MEM_THRESHOLD) {
                     healthy.push(values[i]);
                   }
                 }
@@ -214,57 +214,57 @@ setInterval(() => {
 }, 10000);
 
 
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+// const app = express();
+// app.use(cors());
+// app.use(bodyParser.json());
 
-const activeEndpoints = [];
-app.post('/start', (req, res) => {
-  const stream = {
-    droplet: currentTranscoder.droplet.slice(),
-    ip: currentTranscoder.ip.slice(),
-    public: req.body.public,
-    private: req.body.private
-  };
+// const activeEndpoints = [];
+// app.post('/start', (req, res) => {
+//   const stream = {
+//     droplet: currentTranscoder.droplet.slice(),
+//     ip: currentTranscoder.ip.slice(),
+//     public: req.body.public,
+//     private: req.body.private
+//   };
 
-  activeEndpoints.push(stream)
+//   activeEndpoints.push(stream)
 
-  request({
-    url: `http://${ currentTranscoder.ip }:8080/start`,
-    method: 'POST',
-    json: { stream }
-  }, (err, response, body) => {
-    if (body) {
-      console.log(`STARTING ON ${ currentTranscoder.droplet }`, body);
-      return res.json(body);
-    } else {
-      return res.status(409).json({ error: 'Could not start stream' });
-    }
-  });
-});
+//   request({
+//     url: `http://${ currentTranscoder.ip }:8080/start`,
+//     method: 'POST',
+//     json: { stream }
+//   }, (err, response, body) => {
+//     if (body) {
+//       console.log(`STARTING ON ${ currentTranscoder.droplet }`, body);
+//       return res.json(body);
+//     } else {
+//       return res.status(409).json({ error: 'Could not start stream' });
+//     }
+//   });
+// });
 
-app.post('/stop', (req, res) => {
-  const index = activeEndpoints.map((x) => x.public).indexOf(req.body.public);
-  const found = activeEndpoints[index];
-  if (found !== -1) {
-    activeEndpoints.splice(index, 1);
+// app.post('/stop', (req, res) => {
+//   const index = activeEndpoints.map((x) => x.public).indexOf(req.body.public);
+//   const found = activeEndpoints[index];
+//   if (found !== -1) {
+//     activeEndpoints.splice(index, 1);
 
-    request({
-      url: `http://${ found.ip }:8080/stop`,
-      method: 'POST',
-      json: { public: req.body.public, private: req.body.private }
-    }, (err, response, body) => {
-      if (body) {
-        console.log(`TRANSCODER ${ public } STOPPED`, body);
-        return res.json(body);
-      } else {
-        return res.status(409).json({ error: 'Could not stop stream' });
-      }
-    });
-  } else {
-    return res.status(409).json({ error: 'Could not find stream' });
-  }
-})
+//     request({
+//       url: `http://${ found.ip }:8080/stop`,
+//       method: 'POST',
+//       json: { public: req.body.public, private: req.body.private }
+//     }, (err, response, body) => {
+//       if (body) {
+//         console.log(`TRANSCODER ${ public } STOPPED`, body);
+//         return res.json(body);
+//       } else {
+//         return res.status(409).json({ error: 'Could not stop stream' });
+//       }
+//     });
+//   } else {
+//     return res.status(409).json({ error: 'Could not find stream' });
+//   }
+// })
 
-const server = http.createServer(app);
-server.listen(8080);
+// const server = http.createServer(app);
+// server.listen(8080);
