@@ -35,7 +35,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 const minimumDroplets = 1;
 
 const TIME_TIL_CLEARED = 60000 * 60 * 3;
-const HEALTH_MEM_THRESHOLD = 1.4;
+const HEALTH_MEM_THRESHOLD = 1.6;
 
 let init = false;
 let initializing = false;
@@ -97,7 +97,6 @@ function createDroplet() {
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      // user_data: '#cloud-config\nruncmd:\n - /opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n - export forever=/root/.nvm/versions/node/v8.12.0/lib/node_modules/forever/bin/forever\n - export node=/root/.nvm/versions/node/v8.12.0/bin/node\n - forever start /opt/transcoder-controls/index.js',
       user_data: '#cloud-config\nruncmd:\n - /opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n - /root/.nvm/versions/node/v8.12.0/bin/node /opt/transcoder-controls/index.js',
       private_networking: null,
       monitoring: false,
@@ -156,7 +155,6 @@ setInterval(() => {
             }
   
             // Check to ensure not to kill newly created droplet
-            console.log('DROPLETS', values);
             const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
             let deleting = false;
             if (values) {
@@ -183,6 +181,9 @@ setInterval(() => {
                   }, TIME_TIL_CLEARED);
                 }
               }
+
+              console.log('HEALTHY', healthy);
+              console.log('UNHEALTHY', unhealthy);
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
               const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder.droplet);
