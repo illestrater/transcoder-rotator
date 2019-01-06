@@ -189,12 +189,12 @@ setInterval(() => {
 
               console.log('HEALTHY', healthy);
               console.log('UNHEALTHY', unhealthy);
+              console.log('FLUSHING', flushing);
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
               const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder);
               if (currentIsUnhealthy) {
                 let newCurrent;
-                console.log('FLUSHING', flushing);
                 for (let i = 0; i < healthy.length; i++) {
                   const exists = _.find(flushing, droplet => droplet.droplet === healthy[i].droplet);
                   console.log('EXISTS', exists);
