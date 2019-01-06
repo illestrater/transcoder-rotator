@@ -35,7 +35,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 const minimumDroplets = 1;
 
 const TIME_TIL_CLEARED = 60000 * 60 * 3;
-const HEALTH_MEM_THRESHOLD = 1.5;
+const HEALTH_MEM_THRESHOLD = 1.6;
 
 let init = false;
 let initializing = false;
@@ -173,11 +173,17 @@ setInterval(() => {
               for (let i = 0; i < unhealthy.length; i++) {
                 const exists = _.find(flushing, droplet => unhealthy[i].droplet === droplet.droplet);
                 if (!exists) {
+                  console.log('ATTEMPTING FLUSH');
                   flushing.push(unhealthy[i]);
-                  setTimeout(() => {
+                  request(`http://${ unhealthy[i].ip }:8080/stop_liquidsoap`, { json: true }, (err, response, body) => {
+                    if (body && body.success) {
+                      console.log('FLUSHING!', unhealthy[i].droplet);
+                    }
+                  });
+                  // setTimeout(() => {
                     // RESET LIQUIDSOAP
                     // deleteDroplet(unhealty[i].droplet);
-                  }, TIME_TIL_CLEARED);
+                  // }, TIME_TIL_CLEARED);
                 }
               }
 
