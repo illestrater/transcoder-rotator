@@ -148,12 +148,6 @@ setInterval(() => {
           }
 
           Promise.all(serverPromises).then((values) => {
-            if (!init) {
-              currentTranscoder = values[0];
-              init = true;
-            }
-
-
             let deleting = false;
             if (values) {
               const unhealthy = [];
@@ -167,6 +161,12 @@ setInterval(() => {
                   }
                 }
               }
+
+              // Initialize first transcoder
+              if (!init) {
+                currentTranscoder = values[0];
+                init = true;
+              }  
 
               // Check to ensure not to kill newly created droplet
               // const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
