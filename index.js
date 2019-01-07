@@ -152,9 +152,8 @@ setInterval(() => {
               currentTranscoder = values[0];
               init = true;
             }
-  
-            // Check to ensure not to kill newly created droplet
-            const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
+
+
             let deleting = false;
             if (values) {
               const unhealthy = [];
@@ -168,6 +167,9 @@ setInterval(() => {
                   }
                 }
               }
+
+              // Check to ensure not to kill newly created droplet
+              // const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
 
               // Push new unhealthy droplets to flushing state
               for (let i = 0; i < unhealthy.length; i++) {
