@@ -149,7 +149,7 @@ setInterval(() => {
 
           Promise.all(serverPromises).then((values) => {
             if (!init) {
-              currentTranscoder = values[0].droplet;
+              currentTranscoder = values[0];
               init = true;
             }
   
@@ -192,7 +192,7 @@ setInterval(() => {
               console.log('FLUSHING', flushing);
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
-              const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder);
+              const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder.droplet);
               if (currentIsUnhealthy) {
                 let newCurrent;
                 for (let i = 0; i < healthy.length; i++) {
