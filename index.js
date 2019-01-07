@@ -187,7 +187,8 @@ setInterval(() => {
                       console.log('FLUSHING!', unhealthy[i].droplet);
                       setTimeout(() => {
                         request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                          flushing = _.remove(flushing, droplet => unhealthy[i].droplet === droplet.droplet);
+                          const compare = unhealty[i].droplet;
+                          flushing = _.remove(flushing, droplet => compare === droplet.droplet);
                           console.log('TRANSCODER RESTORED!', unhealthy[i].droplet);
                         });
                       }, TIME_TIL_RESET + 5000);
