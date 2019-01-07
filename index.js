@@ -162,7 +162,7 @@ setInterval(() => {
               }
 
               // Initialize first transcoder
-              if (!init) {
+              if (!init || !currentTranscoder) {
                 currentTranscoder = values[0];
                 init = true;
               }
