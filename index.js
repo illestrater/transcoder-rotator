@@ -34,7 +34,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 
 const minimumDroplets = 1;
 
-const TIME_TIL_CLEARED = 60000 * 60 * 3;
+const TIME_TIL_RESET = 60000 * 60 * 3;
 const HEALTH_MEM_THRESHOLD = 4;
 
 let init = false;
@@ -92,7 +92,7 @@ function createDroplet() {
       name: 'transcoder',
       region: 'nyc1',
       size: 's-1vcpu-1gb',
-      image: '42140926',
+      image: '42212259',
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
@@ -176,7 +176,13 @@ setInterval(() => {
                 if (!exists) {
                   console.log('ATTEMPTING FLUSH');
                   flushing.push(unhealthy[i]);
-                  request(`http://${ unhealthy[i].ip }:8080/stop_liquidsoap`, { json: true }, (err, response, body) => {
+                  request({
+                    url: `http://${ unhealthy[i].ip }:8080/stop_liquidsoap`,
+                    method: 'POST',
+                    json: {
+                        ttr: TIME_TIL_RESET
+                    }
+                  }, (err, response, body) => {
                     if (body && body.success) {
                       console.log('FLUSHING!', unhealthy[i].droplet);
                       setTimeout(() => {
@@ -184,7 +190,7 @@ setInterval(() => {
                           flushing = _.remove(flushing, droplet => unhealthy[i].droplet === droplet.droplet);
                           console.log('TRANSCODER RESTORED!', unhealthy[i].droplet);
                         });
-                      }, TIME_TIL_CLEARED + 5000);
+                      }, TIME_TIL_RESET + 5000);
                     }
                   });
                 }
