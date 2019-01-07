@@ -165,7 +165,7 @@ setInterval(() => {
               if (!init) {
                 currentTranscoder = values[0];
                 init = true;
-              }  
+              }
 
               // Check to ensure not to kill newly created droplet
               // const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
@@ -187,7 +187,7 @@ setInterval(() => {
                       console.log('FLUSHING!', unhealthy[i].droplet);
                       setTimeout(() => {
                         request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                          const compare = unhealthy[i].droplet;
+                          const compare = JSON.parse(JSON.stringify(unhealthy[i].droplet));
                           flushing = _.remove(flushing, droplet => compare === droplet.droplet);
                           console.log('TRANSCODER RESTORED!', unhealthy[i].droplet);
                         });
