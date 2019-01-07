@@ -35,7 +35,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 const minimumDroplets = 1;
 
 const TIME_TIL_CLEARED = 60000 * 60 * 3;
-const HEALTH_MEM_THRESHOLD = 8;
+const HEALTH_MEM_THRESHOLD = 4;
 
 let init = false;
 let initializing = false;
@@ -64,7 +64,7 @@ function checkNewDroplet(droplet) {
           if (body) {
             initialized = true;
             initializing = droplet.id;
-            currentTranscoder = droplet.id;
+            // currentTranscoder = droplet.id;
             clearInitialization = setTimeout(() => {
               initializing = false;
             }, 60000 * 5);
@@ -164,7 +164,7 @@ setInterval(() => {
 
               // Initialize first transcoder
               if (!init) {
-                currentTranscoder = healthy[0];
+                currentTranscoder = values[0];
                 init = true;
               }  
 
