@@ -35,7 +35,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 const minimumDroplets = 1;
 
 const TIME_TIL_CLEARED = 60000 * 60 * 3;
-const HEALTH_MEM_THRESHOLD = 1.8;
+const HEALTH_MEM_THRESHOLD = 2.1;
 
 let init = false;
 let initializing = false;
