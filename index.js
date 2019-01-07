@@ -164,7 +164,7 @@ setInterval(() => {
 
               // Initialize first transcoder
               if (!init) {
-                currentTranscoder = values[0];
+                currentTranscoder = healthy[0];
                 init = true;
               }  
 
