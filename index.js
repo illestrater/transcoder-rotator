@@ -64,7 +64,6 @@ function checkNewDroplet(droplet) {
           if (body) {
             initialized = true;
             initializing = droplet.id;
-            // currentTranscoder = droplet.id;
             clearInitialization = setTimeout(() => {
               initializing = false;
             }, 60000 * 5);
@@ -182,15 +181,12 @@ setInterval(() => {
                       console.log('FLUSHING!', unhealthy[i].droplet);
                       setTimeout(() => {
                         request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
+                          flushing = _.remove(flushing, droplet => unhealthy[i].droplet === droplet.droplet);
                           console.log('TRANSCODER RESTORED!', unhealthy[i].droplet);
                         });
                       }, TIME_TIL_CLEARED + 5000);
                     }
                   });
-                  // setTimeout(() => {
-                    // RESET LIQUIDSOAP
-                    // deleteDroplet(unhealty[i].droplet);
-                  // }, TIME_TIL_CLEARED);
                 }
               }
 
