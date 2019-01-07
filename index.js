@@ -4,10 +4,10 @@ const _ = require('lodash');
 const axios = require('axios');
 const request = require('request');
 const winston = require('winston');
-// const express = require('express');
-// const http = require('http');
-// const cors = require('cors');
-// const bodyParser = require('body-parser');
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 
 const ENV = process.env;
 
@@ -225,9 +225,13 @@ setInterval(() => {
 }, 10000);
 
 
-// const app = express();
-// app.use(cors());
-// app.use(bodyParser.json());
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+app.get('/current', (req, res) => {
+  res.json(currentTranscoder);
+});
 
 // const activeEndpoints = [];
 // app.post('/start', (req, res) => {
@@ -277,5 +281,5 @@ setInterval(() => {
 //   }
 // })
 
-// const server = http.createServer(app);
-// server.listen(8080);
+const server = http.createServer(app);
+server.listen(2222);
