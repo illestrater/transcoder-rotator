@@ -180,6 +180,11 @@ setInterval(() => {
                   request(`http://${ unhealthy[i].ip }:8080/stop_liquidsoap`, { json: true }, (err, response, body) => {
                     if (body && body.success) {
                       console.log('FLUSHING!', unhealthy[i].droplet);
+                      setTimeout(() => {
+                        request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
+                          console.log('TRANSCODER RESTORED!', unhealthy[i].droplet);
+                        });
+                      }, TIME_TIL_CLEARED + 5000);
                     }
                   });
                   // setTimeout(() => {
