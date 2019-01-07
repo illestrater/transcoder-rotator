@@ -174,7 +174,6 @@ setInterval(() => {
               for (let i = 0; i < unhealthy.length; i++) {
                 const exists = _.find(flushing, droplet => unhealthy[i].droplet === droplet.droplet);
                 if (!exists) {
-                  console.log('ATTEMPTING FLUSH');
                   flushing.push(unhealthy[i]);
                   request({
                     url: `http://${ unhealthy[i].ip }:8080/stop_liquidsoap`,
@@ -185,11 +184,13 @@ setInterval(() => {
                   }, (err, response, body) => {
                     if (body && body.success) {
                       console.log('FLUSHING!', unhealthy[i].droplet);
+                      const compare = JSON.parse(JSON.stringify(unhealthy[i].droplet));
                       setTimeout(() => {
                         request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                          const compare = JSON.parse(JSON.stringify(unhealthy[i].droplet));
-                          flushing = _.remove(flushing, droplet => compare === droplet.droplet);
-                          console.log('TRANSCODER RESTORED!', unhealthy[i].droplet);
+                          const indexOfFlushing = _.findIndex(flushing, droplet => compare === droplet.droplet);
+                          console.log('REMOVING FROM FLUSHING INDEX: ', indexOfFlushing);
+                          flushing.splice(indexOfFlushing, 1);
+                          console.log('TRANSCODER RESTORED!', compare);
                         });
                       }, TIME_TIL_RESET + 5000);
                     }
