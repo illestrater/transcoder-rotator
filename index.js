@@ -234,8 +234,8 @@ setInterval(() => {
                 for (let i = 0; i < healthy.length; i++) {
                   const exists = _.find(utilized, droplet => droplet === healthy[i].droplet);
                   if (!exists) {
-                    console.log('DELETING', exists);
-                    deleteDroplet(exists);
+                    console.log('DELETING', healthy[i].droplet);
+                    deleteDroplet(healthy[i].droplet);
                   }
                 }
               }
