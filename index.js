@@ -186,14 +186,14 @@ setInterval(() => {
                   }, (err, response, body) => {
                     if (body && body.success) {
                       console.log('FLUSHING!', unhealthy[i].droplet);
-                      const compare = unhealthy[i].droplet;
+                      const compare = unhealthy[i];
                       setTimeout(() => {
-                        request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                          const flushingIndex = _.findIndex(flushing, droplet => compare === droplet.droplet);
+                        request(`http://${ compare.ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
+                          const flushingIndex = _.findIndex(flushing, droplet => compare.droplet === droplet.droplet);
                           flushing.splice(flushingIndex, 1);
-                          utilized = utilized.filter(droplet => droplet !== compare);
+                          utilized = utilized.filter(droplet => droplet !== compare.droplet);
                           console.log('REMOVING FROM FLUSHING INDEX: ', flushingIndex);
-                          console.log('TRANSCODER RESTORED!', compare);
+                          console.log('TRANSCODER RESTORED!', compare.droplet);
                         });
                       }, TIME_TIL_RESET + 5000);
                     }
