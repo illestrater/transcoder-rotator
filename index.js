@@ -233,7 +233,7 @@ setInterval(() => {
               if (healthy.length + unhealthy.length > MINIMUM_DROPLETS && healthy.length > 1) {
                 for (let i = 0; i < healthy.length; i++) {
                   const exists = _.find(utilized, droplet => droplet === healthy[i].droplet);
-                  if (!exists) {
+                  if (!exists && healthy[i].ip !== '162.243.166.194') {
                     console.log('DELETING', healthy[i].droplet);
                     deleteDroplet(healthy[i].droplet);
                   }
