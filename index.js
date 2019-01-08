@@ -32,8 +32,7 @@ const api = axios.create({
 
 axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_KEY, 'utf8').trim();
 
-const minimumDroplets = 1;
-
+const MINIMUM_DROPLETS = 1;
 const TIME_TIL_RESET = 60000 * 60 * 3;
 const HEALTH_MEM_THRESHOLD = 4;
 
@@ -45,6 +44,7 @@ let availableDroplets = [];
 let serverPromises = [];
 let healthy = [];
 let unhealthy = [];
+let utilized = [];
 let flushing = [];
 let currentTranscoder = null;
 
@@ -78,7 +78,7 @@ function checkNewDroplet(droplet) {
   }, 5000);
 
   setTimeout(() => {
-    if (!initializing && availableDroplets.length > minimumDroplets) {
+    if (!initializing && availableDroplets.length > MINIMUM_DROPLETS) {
       api.delete(`v2/droplets/${ droplet.id }`)
       .then((res) => console.log(`DESTROYED DEAD DROPLET ${ droplet.id }`))
       clearInterval(initializationChecker);
@@ -116,7 +116,7 @@ function deleteDroplet(droplet) {
 }
 
 // api.get('v2/load_balancers', (res) => console.log(res));
-logger.info(`INITIALIZING TRANSCODER ROTATOR WITH, ${ minimumDroplets } MINIMUM DROPLETS`);
+logger.info(`INITIALIZING TRANSCODER ROTATOR WITH: ${ MINIMUM_DROPLETS } MINIMUM DROPLETS`);
 
 // Load monitor
 setInterval(() => {
@@ -157,7 +157,8 @@ setInterval(() => {
                 if (values[i] && values[i].usage) {
                   if (values[i].usage < HEALTH_MEM_THRESHOLD)
                     newHealthy.push(values[i]);
-                  else newUnhealthy.push(values[i]);
+                  else
+                    newUnhealthy.push(values[i]);
                 }
               }
 
@@ -167,11 +168,9 @@ setInterval(() => {
               // Initialize first transcoder
               if (!init || !currentTranscoder) {
                 currentTranscoder = values[0];
+                utilized.push(currentTranscoder.droplet);
                 init = true;
               }
-
-              // Check to ensure not to kill newly created droplet
-              // const isInitialized = _.find(values, droplet => initializing === droplet.droplet);
 
               // Push new unhealthy droplets to flushing state
               for (let i = 0; i < unhealthy.length; i++) {
@@ -187,12 +186,13 @@ setInterval(() => {
                   }, (err, response, body) => {
                     if (body && body.success) {
                       console.log('FLUSHING!', unhealthy[i].droplet);
-                      const compare = JSON.parse(JSON.stringify(unhealthy[i].droplet));
+                      const compare = unhealthy[i].droplet;
                       setTimeout(() => {
                         request(`http://${ unhealthy[i].ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                          const indexOfFlushing = _.findIndex(flushing, droplet => compare === droplet.droplet);
-                          console.log('REMOVING FROM FLUSHING INDEX: ', indexOfFlushing);
-                          flushing.splice(indexOfFlushing, 1);
+                          const flushingIndex = _.findIndex(flushing, droplet => compare === droplet.droplet);
+                          flushing.splice(flushingIndex, 1);
+                          utilized = utilized.filter(droplet => droplet !== compare);
+                          console.log('REMOVING FROM FLUSHING INDEX: ', flushingIndex);
                           console.log('TRANSCODER RESTORED!', compare);
                         });
                       }, TIME_TIL_RESET + 5000);
@@ -204,6 +204,7 @@ setInterval(() => {
               console.log('HEALTHY', healthy);
               console.log('UNHEALTHY', unhealthy);
               console.log('FLUSHING', flushing);
+              console.log('UTILIZED', utilized);
 
               // If current transcoder becomes unhealthy, select new transcoding droplet
               const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder.droplet);
@@ -220,10 +221,22 @@ setInterval(() => {
                 console.log('CHECKING STATE', newCurrent, initializing);
                 if (newCurrent) {
                   currentTranscoder = newCurrent;
+                  utilized.push(currentTranscoder.droplet);
                 } else if (!initializing) {
                   // If all are unhealthy, spin up new transcoder droplet
                   initializing = true;
                   createDroplet();
+                }
+              }
+
+              // Delete unused transcoders
+              if (healthy.length + unhealthy.length > MINIMUM_DROPLETS && healthy.length > 1) {
+                for (let i = 0; i < healthy.length; i++) {
+                  const exists = _.find(utilized, droplet => droplet === healthy[i].droplet);
+                  if (!exists) {
+                    console.log('DELETING', exists);
+                    deleteDroplet(exists);
+                  }
                 }
               }
 
@@ -255,54 +268,6 @@ app.get('/states', (req, res) => {
     currentTranscoder
   });
 });
-
-// const activeEndpoints = [];
-// app.post('/start', (req, res) => {
-//   const stream = {
-//     droplet: currentTranscoder.droplet.slice(),
-//     ip: currentTranscoder.ip.slice(),
-//     public: req.body.public,
-//     private: req.body.private
-//   };
-
-//   activeEndpoints.push(stream)
-
-//   request({
-//     url: `http://${ currentTranscoder.ip }:8080/start`,
-//     method: 'POST',
-//     json: { stream }
-//   }, (err, response, body) => {
-//     if (body) {
-//       console.log(`STARTING ON ${ currentTranscoder.droplet }`, body);
-//       return res.json(body);
-//     } else {
-//       return res.status(409).json({ error: 'Could not start stream' });
-//     }
-//   });
-// });
-
-// app.post('/stop', (req, res) => {
-//   const index = activeEndpoints.map((x) => x.public).indexOf(req.body.public);
-//   const found = activeEndpoints[index];
-//   if (found !== -1) {
-//     activeEndpoints.splice(index, 1);
-
-//     request({
-//       url: `http://${ found.ip }:8080/stop`,
-//       method: 'POST',
-//       json: { public: req.body.public, private: req.body.private }
-//     }, (err, response, body) => {
-//       if (body) {
-//         console.log(`TRANSCODER ${ public } STOPPED`, body);
-//         return res.json(body);
-//       } else {
-//         return res.status(409).json({ error: 'Could not stop stream' });
-//       }
-//     });
-//   } else {
-//     return res.status(409).json({ error: 'Could not find stream' });
-//   }
-// })
 
 const server = http.createServer(app);
 server.listen(2222);
