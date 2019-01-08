@@ -155,11 +155,9 @@ setInterval(() => {
               const newUnhealthy = [];
               for (let i = 0; i < values.length; i++) {
                 if (values[i] && values[i].usage) {
-                  if (values[i].usage >= HEALTH_MEM_THRESHOLD) {
-                    unhealthy.push(values[i]);
-                  } else if (values[i].usage < HEALTH_MEM_THRESHOLD) {
-                    healthy.push(values[i]);
-                  }
+                  if (values[i].usage < HEALTH_MEM_THRESHOLD)
+                    newHealthy.push(values[i]);
+                  else newUnhealthy.push(values[i]);
                 }
               }
 
