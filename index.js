@@ -43,6 +43,8 @@ let initialized = true;
 let clearInitialization = false;
 let availableDroplets = [];
 let serverPromises = [];
+let healthy = [];
+let unhealthy = [];
 let flushing = [];
 let currentTranscoder = null;
 
@@ -149,8 +151,8 @@ setInterval(() => {
           Promise.all(serverPromises).then((values) => {
             let deleting = false;
             if (values) {
-              const unhealthy = [];
-              const healthy = [];
+              const newHealthy = [];
+              const newUnhealthy = [];
               for (let i = 0; i < values.length; i++) {
                 if (values[i] && values[i].usage) {
                   if (values[i].usage >= HEALTH_MEM_THRESHOLD) {
@@ -160,6 +162,9 @@ setInterval(() => {
                   }
                 }
               }
+
+              healthy = newHealthy;
+              unhealthy = newUnhealthy;
 
               // Initialize first transcoder
               if (!init || !currentTranscoder) {
@@ -242,6 +247,15 @@ app.use(bodyParser.json());
 
 app.get('/current', (req, res) => {
   res.json(currentTranscoder);
+});
+
+app.get('/states', (req, res) => {
+  res.json({
+    healthy,
+    unhealthy,
+    flushing,
+    currentTranscoder
+  });
 });
 
 // const activeEndpoints = [];
