@@ -276,35 +276,34 @@ app.get('/states', (req, res) => {
 });
 
 app.post('/start', (req, res) => {
-  request({
-    url: `http://${ currentTranscoder.ip }:8080/start`,
-    method: 'POST',
-    json: {
-        stream: req.body.stream
-    }
-  }, (err, response, body) => {
-    if (body) {
-      const exists = activeTranscoders.find((transcoder) => {
-        return transcoder.public === req.body.stream.public;
-      });
+  const exists = activeTranscoders.find((transcoder) => {
+    return transcoder.public === req.body.stream.public;
+  });
 
-      if (exists) {
-        exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
-      } else {
+  if (exists) {
+    exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
+  } else {
+    request({
+      url: `http://${ currentTranscoder.ip }:8080/start`,
+      method: 'POST',
+      json: {
+          stream: req.body.stream
+      }
+    }, (err, response, body) => {
+      if (body) {
         activeTranscoders.push({
             ip: currentTranscoder.ip,
             public: req.body.stream.public,
             private: req.body.stream.private,
             cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
         });
+        console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
+        res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` })
+      } else {
+        console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
+        res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
       }
-      console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
-      res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` })
-    } else {
-      console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
-      res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
-    }
-  });
+    });
 });
 
 app.post('/stop', (req, res) => {
