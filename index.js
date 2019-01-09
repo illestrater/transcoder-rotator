@@ -249,12 +249,12 @@ setInterval(() => {
               const now = new Date().getTime();
               activeTranscoders.forEach(transcoder => {
                 if (now > transcoder.cleanup.getTime()) {
-                  console.log('REMOVING DEAD TRANSCODER', transcoder.public);
+                  console.log('REMOVING DEAD TRANSCODER', transcoder.ip, transcoder.public);
                   request({
                     url: `http://${ transcoder.ip }:8080/stop`,
                     method: 'POST',
                     json: {
-                        stream: transcoder.public
+                      stream: transcoder.public
                     }
                   }, (err, response, body) => {
                     activeTranscoders = activeTranscoders.filter(search => search.public !== transcoder.public);
