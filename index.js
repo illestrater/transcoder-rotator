@@ -33,7 +33,7 @@ const api = axios.create({
 axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_KEY, 'utf8').trim();
 
 const MINIMUM_DROPLETS = 1;
-const TIME_TIL_RESET = 60000 * 60 * 3;
+const TIME_TIL_RESET = 60000 * 60 * 0.01;
 const HEALTH_MEM_THRESHOLD = 8;
 
 let init = false;
@@ -234,7 +234,7 @@ setInterval(() => {
                 }
               }
 
-              // Delete unused transcoders
+              // Delete unused droplets
               if (healthy.length + unhealthy.length > MINIMUM_DROPLETS && healthy.length > 1) {
                 for (let i = 0; i < healthy.length; i++) {
                   const exists = _.find(utilized, droplet => droplet === healthy[i].droplet);
@@ -244,6 +244,23 @@ setInterval(() => {
                   }
                 }
               }
+
+              // Stop dead transcoders
+              const now = new Date().getTime();
+              activeTranscoders.forEach(transcoder => {
+                if (now > transcoder.cleanup.getTime()) {
+                  console.log('REMOVING DEAD TRANSCODER', transcoder.public);
+                  request({
+                    url: `http://${ transcoder.ip }:8080/stop`,
+                    method: 'POST',
+                    json: {
+                        stream: transcoder.public
+                    }
+                  }, (err, response, body) => {
+                    activeTranscoders = activeTranscoders.filter(search => search.public !== transcoder.public);
+                  });
+                }
+              });
 
               console.log('CURRENT TRANSCODER :', currentTranscoder);
               console.log('ACTIVE TRANSCODERS :', activeTranscoders);
@@ -282,6 +299,7 @@ app.post('/start', (req, res) => {
 
   if (exists) {
     exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
+    res.json({ success: `TRANSCODER ${ req.body.stream.public } EXISTS, CLEANUP REFRESHED` })
   } else {
     request({
       url: `http://${ currentTranscoder.ip }:8080/start`,
@@ -311,22 +329,26 @@ app.post('/stop', (req, res) => {
   const findIP = activeTranscoders.find((transcoder) => {
       return transcoder.public === req.body.stream.public;
   });
-  request({
-    url: `http://${ findIP.ip }:8080/stop`,
-    method: 'POST',
-    json: {
-        stream: req.body.stream
-    }
-  }, (err, response, body) => {
-    if (body) {
-      activeTranscoders = activeTranscoders.filter(transcoder => transcoder.public !== req.body.stream.public);
-      console.log(`TRANSCODER STOPPED FOR ${ req.body.stream.public }`);
-      res.json({ success: `TRANSCODER STOPPED FOR ${ req.body.stream.public }` });
-    } else {
-      console.log(`ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }`);
-      res.status(409).json({ error: `ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }` });
-    }
-  });
+  if (findIP) {
+    request({
+      url: `http://${ findIP.ip }:8080/stop`,
+      method: 'POST',
+      json: {
+          stream: req.body.stream
+      }
+    }, (err, response, body) => {
+      if (body) {
+        activeTranscoders = activeTranscoders.filter(transcoder => transcoder.public !== req.body.stream.public);
+        console.log(`TRANSCODER STOPPED FOR ${ req.body.stream.public }`);
+        res.json({ success: `TRANSCODER STOPPED FOR ${ req.body.stream.public }` });
+      } else {
+        console.log(`ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }`);
+        res.status(409).json({ error: `ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }` });
+      }
+    });
+  } else {
+    res.json({ success: `TRANSCODER ${ req.body.stream.public } NOT FOUND` });
+  }
 });
 
 const server = http.createServer(app);
