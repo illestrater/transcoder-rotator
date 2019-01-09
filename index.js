@@ -304,6 +304,7 @@ app.post('/start', (req, res) => {
         res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
       }
     });
+  }
 });
 
 app.post('/stop', (req, res) => {
