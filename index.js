@@ -254,7 +254,9 @@ setInterval(() => {
                     url: `http://${ transcoder.ip }:8080/stop`,
                     method: 'POST',
                     json: {
-                      stream: transcoder.public
+                      stream: {
+                        public: transcoder.public
+                      }
                     }
                   }, (err, response, body) => {
                     activeTranscoders = activeTranscoders.filter(search => search.public !== transcoder.public);
