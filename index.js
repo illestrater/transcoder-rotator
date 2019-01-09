@@ -34,7 +34,7 @@ axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_K
 
 const MINIMUM_DROPLETS = 1;
 const TIME_TIL_RESET = 60000 * 60 * 3;
-const HEALTH_MEM_THRESHOLD = 4;
+const HEALTH_MEM_THRESHOLD = 8;
 
 let init = false;
 let initializing = false;
@@ -42,11 +42,14 @@ let initialized = true;
 let clearInitialization = false;
 let availableDroplets = [];
 let serverPromises = [];
+
 let healthy = [];
 let unhealthy = [];
 let utilized = [];
 let flushing = [];
+
 let currentTranscoder = null;
+let activeTranscoders = [];
 
 function checkNewDroplet(droplet) {
   initializing = false;
@@ -188,13 +191,16 @@ setInterval(() => {
                       console.log('FLUSHING!', unhealthy[i].droplet);
                       const compare = unhealthy[i];
                       setTimeout(() => {
-                        request(`http://${ compare.ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                          const flushingIndex = _.findIndex(flushing, droplet => compare.droplet === droplet.droplet);
-                          flushing.splice(flushingIndex, 1);
-                          utilized = utilized.filter(droplet => droplet !== compare.droplet);
-                          console.log('REMOVING FROM FLUSHING INDEX: ', flushingIndex);
-                          console.log('TRANSCODER RESTORED!', compare.droplet);
-                        });
+                        if (compare) {
+                          request(`http://${ compare.ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
+                            // const flushingIndex = _.findIndex(flushing, droplet => compare.droplet === droplet.droplet);
+                            // flushing.splice(flushingIndex, 1);
+                            flushing = flushing.filter(droplet => droplet.droplet !== compare.droplet);
+                            utilized = utilized.filter(droplet => droplet !== compare.droplet);
+                            console.log('REMOVING FROM FLUSHING INDEX: ', flushingIndex);
+                            console.log('TRANSCODER RESTORED!', compare.droplet);
+                          });
+                        }
                       }, TIME_TIL_RESET + 5000);
                     }
                   });
@@ -241,6 +247,7 @@ setInterval(() => {
               }
 
               console.log('CURRENT TRANSCODER :', currentTranscoder);
+              console.log('ACTIVE TRANSCODERS :', activeTranscoders);
             }
 
             serverPromises = [];
@@ -266,6 +273,51 @@ app.get('/states', (req, res) => {
     unhealthy,
     flushing,
     currentTranscoder
+  });
+});
+
+app.post('/start', (req, res) => {
+  request({
+    url: `http://${ currentTranscoder.ip }:8080/start`,
+    method: 'POST',
+    json: {
+        stream: req.body.stream
+    }
+  }, (err, response, body) => {
+    if (body) {
+      activeTranscoders.push({
+          ip: currentTranscoder.ip,
+          public: req.body.stream.public,
+          private: req.body.stream.private
+      });
+      console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
+      res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` })
+    } else {
+      console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
+      res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+    }
+  });
+});
+
+app.post('/stop', (req, res) => {
+  const findIP = activeTranscoders.find((transcoder) => {
+      return transcoder.public === req.body.stream.public;
+  });
+  request({
+    url: `http://${ findIP }:8080/stop`,
+    method: 'POST',
+    json: {
+        stream: req.body.stream
+    }
+  }, (err, response, body) => {
+    if (body) {
+      activeTranscoders = activeTranscoders.filter(transcoder => transcoder.public !== req.body.stream.public);
+      console.log(`TRANSCODER STOPPED FOR ${ req.body.stream.public }`);
+      res.json({ success: `TRANSCODER STOPPED FOR ${ req.body.stream.public }` });
+    } else {
+      console.log(`ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }`);
+      res.status(409).json({ error: `ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }` });
+    }
   });
 });
 
