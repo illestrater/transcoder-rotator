@@ -197,7 +197,6 @@ setInterval(() => {
                             // flushing.splice(flushingIndex, 1);
                             flushing = flushing.filter(droplet => droplet.droplet !== compare.droplet);
                             utilized = utilized.filter(droplet => droplet !== compare.droplet);
-                            console.log('REMOVING FROM FLUSHING INDEX: ', flushingIndex);
                             console.log('TRANSCODER RESTORED!', compare.droplet);
                           });
                         }
