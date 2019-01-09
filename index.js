@@ -33,7 +33,7 @@ const api = axios.create({
 axios.defaults.headers.common.Authorization = fs.readFileSync(ENV.DIGITALOCEAN_KEY, 'utf8').trim();
 
 const MINIMUM_DROPLETS = 1;
-const TIME_TIL_RESET = 60000 * 60 * 0.01;
+const TIME_TIL_RESET = 60000 * 60 * 3;
 const HEALTH_MEM_THRESHOLD = 8;
 
 let init = false;
