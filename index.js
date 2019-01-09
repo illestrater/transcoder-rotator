@@ -303,7 +303,7 @@ app.post('/stop', (req, res) => {
       return transcoder.public === req.body.stream.public;
   });
   request({
-    url: `http://${ findIP }:8080/stop`,
+    url: `http://${ findIP.ip }:8080/stop`,
     method: 'POST',
     json: {
         stream: req.body.stream
