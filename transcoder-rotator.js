@@ -10,6 +10,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const ENV = process.env;
+const SERVICE_KEY = fs.readFileSync(ENV.SERVICE_KEY, 'utf8').trim();
 
 const logger = winston.createLogger({
   level: 'info',
@@ -274,7 +275,7 @@ setInterval(() => {
             }
 
             serverPromises = [];
-          })
+          });
         }
       }
     })
@@ -300,7 +301,7 @@ app.get('/status', (req, res) => {
 });
 
 app.post('/start', (req, res) => {
-  if (req.body.serviceKey !== ENV.SERVICE_KEY) {
+  if (req.body.serviceKey !== SERVICE_KEY) {
     console.log('auth error');
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -339,7 +340,7 @@ app.post('/start', (req, res) => {
 });
 
 app.post('/stop', (req, res) => {
-  if (req.body.serviceKey !== ENV.SERVICE_KEY) {
+  if (req.body.serviceKey !== SERVICE_KEY) {
     console.log('auth error');
     return res.status(401).json({ error: 'Unauthorized' });
   }
