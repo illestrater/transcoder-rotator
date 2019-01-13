@@ -84,7 +84,7 @@ function checkNewDroplet(droplet) {
   setTimeout(() => {
     if (!initializing && availableDroplets.length > MINIMUM_DROPLETS) {
       api.delete(`v2/droplets/${ droplet.id }`)
-      .then((res) => console.log(`DESTROYED DEAD DROPLET ${ droplet.id }`))
+      .then((res) => console.log(`DESTROYED DEAD DROPLET ${ droplet.id }`));
       clearInterval(initializationChecker);
       initialized = true;
     }
@@ -93,24 +93,29 @@ function checkNewDroplet(droplet) {
 
 function createDroplet() {
   console.log('CREATING DROPLET');
+  initializing = true;
   api.post('v2/droplets',
-    { 
-      name: 'transcoder',
-      region: 'nyc1',
-      size: 's-1vcpu-1gb',
-      image: '42212259',
-      ssh_keys: ['20298220', '20398405'],
-      backups: 'false',
-      ipv6: false,
-      user_data: '#cloud-config\nruncmd:\n - /opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n - /root/.nvm/versions/node/v8.12.0/bin/node /opt/transcoder-controls/index.js',
-      private_networking: null,
-      monitoring: false,
-      volumes: null,
-      tags: ['liquidsoap']
-    }
-  )
-  .then((res) => { console.log('CREATED!', res.data.droplet); checkNewDroplet(res.data.droplet); })
-  .catch((err) => { console.log('ERROR CREATING DROPLET', err); });
+  {
+    name: 'transcoder',
+    region: 'nyc1',
+    size: 's-1vcpu-1gb',
+    image: '42212259',
+    ssh_keys: ['20298220', '20398405'],
+    backups: 'false',
+    ipv6: false,
+    user_data: '#cloud-config\nruncmd:\n - /opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n - /root/.nvm/versions/node/v8.12.0/bin/node /opt/transcoder-controls/index.js',
+    private_networking: null,
+    monitoring: false,
+    volumes: null,
+    tags: ['liquidsoap']
+  }).then((res) => {
+    console.log('CREATED!', res.data.droplet);
+    checkNewDroplet(res.data.droplet);
+  })
+  .catch((err) => {
+    console.log('ERROR CREATING DROPLET', err);
+    initializing = false;
+  });
 }
 
 function deleteDroplet(droplet) {
@@ -127,7 +132,9 @@ setInterval(() => {
     api.get('v2/droplets?tag_name=liquidsoap')
     .then(res => {
       if (res.data) {
-        availableDroplets = res.data.droplets;
+        if (res.data.id !== 'service_unavailable') {
+          availableDroplets = res.data.droplets;
+        }
 
         // Run check one at a time, and while not initializing new droplet
         if (serverPromises.length === 0 && initialized) {
@@ -159,10 +166,8 @@ setInterval(() => {
               const newUnhealthy = [];
               for (let i = 0; i < values.length; i++) {
                 if (values[i] && values[i].usage) {
-                  if (values[i].usage < HEALTH_MEM_THRESHOLD)
-                    newHealthy.push(values[i]);
-                  else
-                    newUnhealthy.push(values[i]);
+                  if (values[i].usage < HEALTH_MEM_THRESHOLD) newHealthy.push(values[i]);
+                  else newUnhealthy.push(values[i]);
                 }
               }
 
@@ -230,7 +235,6 @@ setInterval(() => {
                   utilized.push(currentTranscoder.droplet);
                 } else if (!initializing) {
                   // If all are unhealthy, spin up new transcoder droplet
-                  initializing = true;
                   createDroplet();
                 }
               }
@@ -286,7 +290,7 @@ app.get('/current', (req, res) => {
   res.json(currentTranscoder);
 });
 
-app.get('/states', (req, res) => {
+app.get('/status', (req, res) => {
   res.json({
     healthy,
     unhealthy,
@@ -302,7 +306,7 @@ app.post('/start', (req, res) => {
 
   if (exists) {
     exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
-    res.json({ success: `TRANSCODER ${ req.body.stream.public } EXISTS, CLEANUP REFRESHED` })
+    res.json({ success: `TRANSCODER ${ req.body.stream.public } EXISTS, CLEANUP REFRESHED` });
   } else {
     request({
       url: `http://${ currentTranscoder.ip }:8080/start`,
@@ -319,7 +323,7 @@ app.post('/start', (req, res) => {
             cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
         });
         console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
-        res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` })
+        res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` });
       } else {
         console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
         res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
