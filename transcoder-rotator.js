@@ -300,48 +300,61 @@ app.get('/status', (req, res) => {
 });
 
 app.post('/start', (req, res) => {
+  if (req.body.serviceKey !== ENV.SERVICE_KEY) {
+    console.log('auth error');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const exists = activeTranscoders.find((transcoder) => {
     return transcoder.public === req.body.stream.public;
   });
 
   if (exists) {
     exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
-    res.json({ success: `TRANSCODER ${ req.body.stream.public } EXISTS, CLEANUP REFRESHED` });
-  } else {
-    request({
-      url: `http://${ currentTranscoder.ip }:8080/start`,
-      method: 'POST',
-      json: {
-          stream: req.body.stream
-      }
-    }, (err, response, body) => {
-      if (body) {
-        activeTranscoders.push({
-            ip: currentTranscoder.ip,
-            public: req.body.stream.public,
-            private: req.body.stream.private,
-            cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
-        });
-        console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
-        res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` });
-      } else {
-        console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
-        res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
-      }
-    });
+    return res.json({ success: `TRANSCODER ${ req.body.stream.public } EXISTS, CLEANUP REFRESHED` });
   }
+
+  return request({
+    url: `http://${ currentTranscoder.ip }:8080/start`,
+    method: 'POST',
+    json: {
+        stream: req.body.stream,
+        serviceKey: req.body.serviceKey
+    }
+  }, (err, response, body) => {
+    if (body) {
+      activeTranscoders.push({
+          ip: currentTranscoder.ip,
+          public: req.body.stream.public,
+          private: req.body.stream.private,
+          cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
+      });
+      console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
+      return res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` });
+    }
+
+    console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
+    return res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+  });
 });
 
 app.post('/stop', (req, res) => {
+  if (req.body.serviceKey !== ENV.SERVICE_KEY) {
+    console.log('auth error');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const findIP = activeTranscoders.find((transcoder) => {
       return transcoder.public === req.body.stream.public;
   });
+
   if (findIP) {
-    request({
+    return request({
       url: `http://${ findIP.ip }:8080/stop`,
       method: 'POST',
       json: {
-          stream: req.body.stream
+          stream: req.body.stream,
+          serviceKey: req.body.serviceKey
       }
     }, (err, response, body) => {
       if (body) {
@@ -353,9 +366,9 @@ app.post('/stop', (req, res) => {
         res.status(409).json({ error: `ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }` });
       }
     });
-  } else {
-    res.json({ success: `TRANSCODER ${ req.body.stream.public } NOT FOUND` });
   }
+
+  return res.json({ success: `TRANSCODER ${ req.body.stream.public } NOT FOUND` });
 });
 
 const server = http.createServer(app);
