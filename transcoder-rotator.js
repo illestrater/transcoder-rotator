@@ -283,6 +283,35 @@ setInterval(() => {
 }, 10000);
 
 
+function notifyFirstSet(room, dj) {
+  request({
+      url: `http://${ ENV.BASE_IP }:7777/firstSet`,
+      method: 'POST',
+      json: { room, dj, serviceKey: SERVICE_KEY }
+  }, (err, response, body) => {
+      if (body) {
+          console.log('FIRST SET NOTIFICATION');
+      } else {
+          console.log('FIRST SET ISSUE');
+      }
+  });
+}
+
+function notifyLiveSet(room) {
+  request({
+      url: `http://${ ENV.BASE_IP }:7777/liveSet`,
+      method: 'POST',
+      json: { room, serviceKey: SERVICE_KEY }
+  }, (err, response, body) => {
+      if (body) {
+          console.log('LIVE SET NOTIFICATION');
+      } else {
+          console.log('LIVE SET ISSUE');
+      }
+  });
+}
+
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -306,32 +335,38 @@ app.post('/start', (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  const pub = req.body.room.url;
+  const priv = req.body.room.private;
+
   const exists = activeTranscoders.find((transcoder) => {
-    return transcoder.public === req.body.stream.public;
+    return transcoder.public === pub;
   });
 
   if (exists) {
     exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
-    return res.json({ success: `TRANSCODER ${ req.body.stream.public } EXISTS, CLEANUP REFRESHED` });
+    return res.json({ success: `TRANSCODER ${ pub } EXISTS, CLEANUP REFRESHED` });
   }
 
   return request({
     url: `http://${ currentTranscoder.ip }:8080/start`,
     method: 'POST',
     json: {
-        stream: req.body.stream,
+        stream: { public: pub, private: priv },
         serviceKey: req.body.serviceKey
     }
   }, (err, response, body) => {
     if (body) {
       activeTranscoders.push({
           ip: currentTranscoder.ip,
-          public: req.body.stream.public,
-          private: req.body.stream.private,
+          public: pub,
+          private: priv,
           cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
       });
-      console.log(`TRANSCODER STARTED FOR ${ req.body.stream.public }`);
-      return res.json({ success: `TRANSCODER STARTED FOR ${ req.body.stream.public }` });
+
+      notifyFirstSet(req.body.room._id, req.body.room.dj);
+      notifyLiveSet(req.body.room);
+      console.log(`TRANSCODER STARTED FOR ${ pub }`);
+      return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
     }
 
     console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
