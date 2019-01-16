@@ -374,6 +374,48 @@ app.post('/start', (req, res) => {
   });
 });
 
+app.post('/startTest', (req, res) => {
+  if (req.body.serviceKey !== SERVICE_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const pub = req.body.stream.public;
+  const priv = req.body.stream.private;
+
+  const exists = activeTranscoders.find((transcoder) => {
+    return transcoder.public === pub;
+  });
+
+  if (exists) {
+    exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
+    return res.json({ success: `TRANSCODER ${ pub } EXISTS, CLEANUP REFRESHED` });
+  }
+
+  return request({
+    url: `http://${ currentTranscoder.ip }:8080/start`,
+    method: 'POST',
+    json: {
+        stream: { public: pub, private: priv },
+        serviceKey: req.body.serviceKey
+    }
+  }, (err, response, body) => {
+    if (body) {
+      activeTranscoders.push({
+          ip: currentTranscoder.ip,
+          public: pub,
+          private: priv,
+          cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
+      });
+
+      console.log(`TRANSCODER STARTED FOR ${ pub }`);
+      return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
+    }
+
+    console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
+    return res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+  });
+});
+
 app.post('/stop', (req, res) => {
   if (req.body.serviceKey !== SERVICE_KEY) {
     console.log('auth error');
