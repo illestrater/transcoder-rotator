@@ -363,8 +363,10 @@ app.post('/start', (req, res) => {
           cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
       });
 
-      notifyFirstSet(req.body.room._id, req.body.room.dj);
-      notifyLiveSet(req.body.room);
+      if (req.body.env !== 'development') {
+        notifyFirstSet(req.body.room._id, req.body.room.dj);
+        notifyLiveSet(req.body.room);
+      }
       console.log(`TRANSCODER STARTED FOR ${ pub }`);
       return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
     }
