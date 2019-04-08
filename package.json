@@ -22,6 +22,7 @@
     "fs": "^0.0.1-security",
     "http": "^0.0.0",
     "lodash": "^4.17.11",
+    "node-vault": "^0.9.6",
     "request": "^2.88.0",
     "winston": "^3.1.0"
   }
