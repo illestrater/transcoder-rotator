@@ -5,7 +5,7 @@ const axios = require('axios');
 const request = require('request');
 const winston = require('winston');
 const express = require('express');
-const http = require('http');
+const https = require('https');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
@@ -451,5 +451,9 @@ app.post('/stop', (req, res) => {
   return res.json({ success: `TRANSCODER ${ req.body.stream.public } NOT FOUND` });
 });
 
-const server = http.createServer(app);
+const options = {
+    key:  fs.readFileSync(`${ ENV.CERT_LOCATION }/privkey.pem`, 'utf8'),
+    cert: fs.readFileSync(`${ ENV.CERT_LOCATION }/fullchain.pem`, 'utf8')
+};
+const server = https.createServer(options, app);
 server.listen(2222);
