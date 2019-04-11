@@ -6,6 +6,7 @@ const request = require('request');
 const winston = require('winston');
 const express = require('express');
 const https = require('https');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
@@ -322,6 +323,14 @@ Vault.read('secret/env').then(vault => {
     });
   }
 
+  function verify(token, res, callback) {
+    try {
+        const verified = jwt.verify(token.jwt, SERVICE_KEY);
+        return callback(verified);
+    } catch (err) {
+        return res.status(500).json('Authorization error');
+    }
+  }
 
   const app = express();
   app.use(cors());
@@ -341,125 +350,117 @@ Vault.read('secret/env').then(vault => {
   });
 
   app.post('/start', (req, res) => {
-    if (req.body.serviceKey !== SERVICE_KEY) {
-      console.log('auth error');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    verify(req.body, res, (data) => {
+      const pub = data.room.url;
+      const priv = data.room.private;
 
-    const pub = req.body.room.url;
-    const priv = req.body.room.private;
+      const exists = activeTranscoders.find((transcoder) => {
+        return transcoder.public === pub;
+      });
 
-    const exists = activeTranscoders.find((transcoder) => {
-      return transcoder.public === pub;
-    });
-
-    if (exists) {
-      exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
-      return res.json({ success: `TRANSCODER ${ pub } EXISTS, CLEANUP REFRESHED` });
-    }
-
-    return request({
-      url: `http://${ currentTranscoder.ip }:8080/start`,
-      method: 'POST',
-      json: {
-          stream: { public: pub, private: priv },
-          serviceKey: req.body.serviceKey
+      if (exists) {
+        exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
+        return res.json({ success: `TRANSCODER ${ pub } EXISTS, CLEANUP REFRESHED` });
       }
-    }, (err, response, body) => {
-      if (body) {
-        activeTranscoders.push({
-            ip: currentTranscoder.ip,
-            public: pub,
-            private: priv,
-            cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
-        });
 
-        if (req.body.env !== 'development') {
-          notifyFirstSet(req.body.room._id, req.body.room.dj);
-          notifyLiveSet(req.body.room);
+      return request({
+        url: `http://${ currentTranscoder.ip }:8080/start`,
+        method: 'POST',
+        json: {
+            stream: { public: pub, private: priv },
+            serviceKey: SERVICE_KEY
         }
-        console.log(`TRANSCODER STARTED FOR ${ pub }`);
-        return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
-      }
+      }, (err, response, body) => {
+        if (body) {
+          activeTranscoders.push({
+              ip: currentTranscoder.ip,
+              public: pub,
+              private: priv,
+              cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
+          });
 
-      console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
-      return res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+          if (data.env !== 'development') {
+            notifyFirstSet(data.room._id, data.room.dj);
+            notifyLiveSet(data.room);
+          }
+          console.log(`TRANSCODER STARTED FOR ${ pub }`);
+          return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
+        }
+
+        console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
+        return res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+      });
     });
   });
 
   app.post('/startTest', (req, res) => {
-    if (req.body.serviceKey !== SERVICE_KEY) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    verify(req.body, res, (data) => {
+      const pub = data.stream.public;
+      const priv = data.stream.private;
 
-    const pub = req.body.stream.public;
-    const priv = req.body.stream.private;
+      const exists = activeTranscoders.find((transcoder) => {
+        return transcoder.public === pub;
+      });
 
-    const exists = activeTranscoders.find((transcoder) => {
-      return transcoder.public === pub;
-    });
-
-    if (exists) {
-      exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
-      return res.json({ success: `TRANSCODER ${ pub } EXISTS, CLEANUP REFRESHED` });
-    }
-
-    return request({
-      url: `http://${ currentTranscoder.ip }:8080/start`,
-      method: 'POST',
-      json: {
-          stream: { public: pub, private: priv },
-          serviceKey: req.body.serviceKey
-      }
-    }, (err, response, body) => {
-      if (body) {
-        activeTranscoders.push({
-            ip: currentTranscoder.ip,
-            public: pub,
-            private: priv,
-            cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
-        });
-
-        console.log(`TRANSCODER STARTED FOR ${ pub }`);
-        return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
+      if (exists) {
+        exists.cleanup = new Date(new Date().getTime() + TIME_TIL_RESET);
+        return res.json({ success: `TRANSCODER ${ pub } EXISTS, CLEANUP REFRESHED` });
       }
 
-      console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
-      return res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+      return request({
+        url: `http://${ currentTranscoder.ip }:8080/start`,
+        method: 'POST',
+        json: {
+            stream: { public: pub, private: priv },
+            serviceKey: SERVICE_KEY
+        }
+      }, (err, response, body) => {
+        if (body) {
+          activeTranscoders.push({
+              ip: currentTranscoder.ip,
+              public: pub,
+              private: priv,
+              cleanup: new Date(new Date().getTime() + TIME_TIL_RESET)
+          });
+
+          console.log(`TRANSCODER STARTED FOR ${ pub }`);
+          return res.json({ success: `TRANSCODER STARTED FOR ${ pub }` });
+        }
+
+        console.log(`ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }`);
+        return res.status(409).json({ error: `ISSUE STARTING TRANSCODER ON ${ currentTranscoder.ip }` });
+      });
     });
   });
 
   app.post('/stop', (req, res) => {
-    if (req.body.serviceKey !== SERVICE_KEY) {
-      console.log('auth error');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const findIP = activeTranscoders.find((transcoder) => {
-        return transcoder.public === req.body.stream.public;
-    });
-
-    if (findIP) {
-      return request({
-        url: `http://${ findIP.ip }:8080/stop`,
-        method: 'POST',
-        json: {
-            stream: req.body.stream,
-            serviceKey: req.body.serviceKey
-        }
-      }, (err, response, body) => {
-        if (body) {
-          activeTranscoders = activeTranscoders.filter(transcoder => transcoder.public !== req.body.stream.public);
-          console.log(`TRANSCODER STOPPED FOR ${ req.body.stream.public }`);
-          res.json({ success: `TRANSCODER STOPPED FOR ${ req.body.stream.public }` });
-        } else {
-          console.log(`ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }`);
-          res.status(409).json({ error: `ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }` });
-        }
+    verify(req.body, res, (data) => {
+      const findIP = activeTranscoders.find((transcoder) => {
+          return transcoder.public === data.stream.public;
       });
-    }
 
-    return res.json({ success: `TRANSCODER ${ req.body.stream.public } NOT FOUND` });
+      if (findIP) {
+        return request({
+          url: `http://${ findIP.ip }:8080/stop`,
+          method: 'POST',
+          json: {
+              stream: data.stream,
+              serviceKey: SERVICE_KEY
+          }
+        }, (err, response, body) => {
+          if (body) {
+            activeTranscoders = activeTranscoders.filter(transcoder => transcoder.public !== data.stream.public);
+            console.log(`TRANSCODER STOPPED FOR ${ data.stream.public }`);
+            res.json({ success: `TRANSCODER STOPPED FOR ${ data.stream.public }` });
+          } else {
+            console.log(`ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }`);
+            res.status(409).json({ error: `ISSUE STOPPING TRANSCODER ON ${ currentTranscoder.ip }` });
+          }
+        });
+      }
+
+      return res.json({ success: `TRANSCODER ${ data.stream.public } NOT FOUND` });
+    });
   });
 
   const options = {
