@@ -212,8 +212,6 @@ Vault.read('secret/env').then(vault => {
                         setTimeout(() => {
                           if (compare) {
                             request(`http://${ compare.ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
-                              // const flushingIndex = _.findIndex(flushing, droplet => compare.droplet === droplet.droplet);
-                              // flushing.splice(flushingIndex, 1);
                               flushing = flushing.filter(droplet => droplet.droplet !== compare.droplet);
                               utilized = utilized.filter(droplet => droplet !== compare.droplet);
                               console.log('TRANSCODER RESTORED!', compare.droplet);
@@ -299,7 +297,7 @@ Vault.read('secret/env').then(vault => {
     request({
         url: `${ secrets.service_notifications }/firstSet`,
         method: 'POST',
-        json: { room, dj, serviceKey: SERVICE_KEY }
+        json: { jwt: jwt.sign({ room, dj }, SERVICE_KEY) }
     }, (err, response, body) => {
         if (body) {
             console.log('FIRST SET NOTIFICATION');
@@ -313,7 +311,7 @@ Vault.read('secret/env').then(vault => {
     request({
         url: `${ secrets.service_notifications }/liveSet`,
         method: 'POST',
-        json: { room, serviceKey: SERVICE_KEY }
+        json: { jwt: jwt.sign({ room }, SERVICE_KEY) }
     }, (err, response, body) => {
         if (body) {
             console.log('LIVE SET NOTIFICATION');
