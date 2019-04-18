@@ -203,7 +203,9 @@ Vault.read('secret/env').then(vault => {
                       url: `http://${ unhealthy[i].ip }:8080/stop_liquidsoap`,
                       method: 'POST',
                       json: {
+                        jwt: jwt.sign({
                           ttr: TIME_TIL_RESET
+                        }, SERVICE_KEY)
                       }
                     }, (err, response, body) => {
                       if (body && body.success) {
@@ -211,7 +213,13 @@ Vault.read('secret/env').then(vault => {
                         const compare = unhealthy[i];
                         setTimeout(() => {
                           if (compare) {
-                            request(`http://${ compare.ip }:8080/start_liquidsoap`, { json: true }, (err, response, body) => {
+                            request({
+                              url: `http://${ compare.ip }:8080/start_liquidsoap`,
+                              method: 'POST',
+                              json: {
+                                jwt: jwt.sign({}, SERVICE_KEY)
+                              }
+                            }, (err, response, body) => {
                               flushing = flushing.filter(droplet => droplet.droplet !== compare.droplet);
                               utilized = utilized.filter(droplet => droplet !== compare.droplet);
                               console.log('TRANSCODER RESTORED!', compare.droplet);
@@ -270,9 +278,11 @@ Vault.read('secret/env').then(vault => {
                       url: `http://${ transcoder.ip }:8080/stop`,
                       method: 'POST',
                       json: {
-                        stream: {
-                          public: transcoder.public
-                        }
+                        jwt: jwt.sign({
+                          stream: {
+                            public: transcoder.public
+                          }
+                        }, SERVICE_KEY)
                       }
                     }, (err, response, body) => {
                       activeTranscoders = activeTranscoders.filter(search => search.public !== transcoder.public);
@@ -365,8 +375,9 @@ Vault.read('secret/env').then(vault => {
         url: `http://${ currentTranscoder.ip }:8080/start`,
         method: 'POST',
         json: {
-            stream: { public: pub, private: priv },
-            serviceKey: SERVICE_KEY
+          jwt: jwt.sign({
+            stream: { public: pub, private: priv }
+          }, SERVICE_KEY)
         }
       }, (err, response, body) => {
         if (body) {
@@ -409,8 +420,9 @@ Vault.read('secret/env').then(vault => {
         url: `http://${ currentTranscoder.ip }:8080/start`,
         method: 'POST',
         json: {
-            stream: { public: pub, private: priv },
-            serviceKey: SERVICE_KEY
+          jwt: jwt.sign({
+            stream: { public: pub, private: priv }
+          }, SERVICE_KEY)
         }
       }, (err, response, body) => {
         if (body) {
@@ -442,8 +454,9 @@ Vault.read('secret/env').then(vault => {
           url: `http://${ findIP.ip }:8080/stop`,
           method: 'POST',
           json: {
+            jwt: jwt.sign({
               stream: data.stream,
-              serviceKey: SERVICE_KEY
+            }, SERVICE_KEY)
           }
         }, (err, response, body) => {
           if (body) {
