@@ -112,7 +112,7 @@ Vault.read('secret/env').then(vault => {
       name: 'transcoder',
       region: 'nyc1',
       size: 's-1vcpu-1gb',
-      image: '42212259',
+      image: '46094659',
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
@@ -133,7 +133,7 @@ Vault.read('secret/env').then(vault => {
 
   function deleteDroplet(droplet) {
     api.delete(`v2/droplets/${ droplet }`)
-    .then((res) => { console.log('DROPLET DELETED', droplet ); })
+    .then((res) => { console.log('DROPLET DELETED', droplet); })
     .catch(err => {});
   }
 
