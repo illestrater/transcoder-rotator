@@ -112,7 +112,7 @@ Vault.read('secret/env').then(vault => {
       name: 'transcoder',
       region: 'nyc1',
       size: 's-1vcpu-1gb',
-      image: '46094659',
+      image: '46094725',
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
