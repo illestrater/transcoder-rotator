@@ -190,7 +190,10 @@ Vault.read('secret/env').then(vault => {
                 // Initialize first transcoder
                 if (!init || !currentTranscoder) {
                   currentTranscoder = values[0];
-                  utilized.push(currentTranscoder.droplet);
+                  if (currentTranscoder) {
+                    utilized.push(currentTranscoder.droplet);
+                  }
+
                   init = true;
                 }
 
