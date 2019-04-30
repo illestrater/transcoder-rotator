@@ -116,7 +116,7 @@ Vault.read('secret/env').then(vault => {
       ssh_keys: ['20298220', '20398405'],
       backups: 'false',
       ipv6: false,
-      user_data: '#cloud-config\nruncmd:\n - /opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n - git -C /opt/transcoder-controls pull origin master\n - /root/.nvm/versions/node/v8.12.0/bin/npm --prefix /opt/transcoder-controls install /opt/transcoder-controls\n - /root/.nvm/versions/node/v8.12.0/bin/forever start /opt/transcoder-controls/index.js',
+      user_data: '#cloud-config\nruncmd:\n - /opt/transcoder-controls/liquidsoap /opt/transcoder-controls/transcoder.liq\n - git -C /opt/transcoder-controls stash\n - git -C /opt/transcoder-controls pull origin master\n - /root/.nvm/versions/node/v8.12.0/bin/npm --prefix /opt/transcoder-controls install /opt/transcoder-controls\n - /root/.nvm/versions/node/v8.12.0/bin/forever start /opt/transcoder-controls/index.js',
       private_networking: null,
       monitoring: false,
       volumes: null,
