@@ -238,7 +238,7 @@ Vault.read('secret/env').then(vault => {
 
                 // If current transcoder becomes unhealthy, select new transcoding droplet
                 const currentIsUnhealthy = _.find(unhealthy, droplet => droplet.droplet === currentTranscoder.droplet);
-                if (currentIsUnhealthy) {
+                if (currentIsUnhealthy || availableDroplets.length < MINIMUM_DROPLETS) {
                   let newCurrent;
                   for (let i = 0; i < healthy.length; i++) {
                     const exists = _.find(flushing, droplet => droplet.droplet === healthy[i].droplet);
