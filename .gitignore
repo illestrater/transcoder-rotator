@@ -7,4 +7,3 @@ _nogit
 todo.md
 *.tar.gz*
 .env
-yarn.lock
